@@ -246,3 +246,49 @@ resolve before committing:
   partial opening, smoothing, scale/aspect independence, loss/reacquisition,
   frame/control alignment, manual fallback and cleanup checks. Actual hand
   model inference, live gestures and FPS remain unverified by this assistant.
+
+## Local Level 04 — dynamic shadows — September 12, 2026
+
+- Added a self-contained `shadows` cell in `test_l1.ipynb`, used by the standard
+  local camera loop and optional photo experiment. Existing notebook edits and
+  the independent ONNX experiment are preserved. Colab and ONNX retain their
+  existing rendering; `main.py` has not been ported or changed for this phase.
+- `compute_shadow_visibility(depth, normals, valid, light, intrinsics, ...)`
+  returns device-resident H×W float32 visibility. The geometry estimator now
+  exposes its actual `(fx, fy, cx, cy)` intrinsics. Rays use normal-offset
+  receivers, camera-frustum clipping and perspective-correct reciprocal-Z
+  interpolation. Sampled ray intervals intersect finite depth slabs in batches
+  of eight. Invalid/out-of-frame samples are non-blocking.
+- `SHADOW_QUALITY="fast"` caps the receiver grid at 160 pixels wide and 32 ray
+  samples; `"quality"` uses 320/64. Aspect ratio is preserved and both sample
+  original-resolution depth. Defaults: bias 0.01×receiver Z, thickness
+  0.03×occluder Z. Depth-aware 3×3 filtering and joint bilateral upsampling
+  soften edges while limiting leakage across silhouettes. Every processed
+  frame gets fresh shadows; no temporal mask reuse or inference queue is added.
+- `relight_rgb(..., visibility=None)` remains compatible with existing callers.
+  Visibility attenuates direct diffuse/specular before sRGB conversion, leaving
+  ambient unchanged. Local/photo shadows default on; disabled shadows or zero
+  power skip tracing. S toggles shadows, V toggles grayscale visibility; R
+  retains its light/calibration behavior. The local status shows shadow state
+  and a separate `shadow` stage. The standard output retains one final download.
+- CPU/CUDA synthetic checks passed for flat/tilted planes, an analytically
+  predicted foreground-blocker shadow (IoU 0.889), XYZ motion, invalid geometry,
+  camera-plane clipping, changed resolutions, filtered edges and batch sizes.
+  All-ones visibility preserves previous rendering exactly; all-zero visibility
+  matches ambient-only rendering. Actual photo-cell integration passed.
+- Cached CUDA model -> proxy geometry -> shadows -> relighting smoke passed.
+  Existing geometry/lighting, fast/reference preprocessing, backend-selection,
+  gesture/intensity, browser-control and simulated local-loop checks passed.
+  Local tests cover same-frame geometry/light alignment, S/V, diagnostics,
+  disabled/zero-power bypass and camera cleanup after a shadow failure.
+- Saved `validation/phase4/benchmark.json` and a synthetic visual comparison.
+  On the MX550, the fast shadow preset added mean compute costs of **8.29 ms**
+  at 320×240, **9.05 ms** at 480×360 and **12.07 ms** at 640×480, from 15 warmup
+  pairs plus 30 alternating off/on measured pairs. The 320×240 mean meets the
+  10 ms target; on-path p95 was 16.20 ms. These are rendering-only timings,
+  excluding depth inference, camera, hand tracking, download and display.
+- Remaining acceptance: real camera/hand interaction, self-shadowing and
+  stability on real estimated depth, and completed-loop FPS at each preset.
+  No live FPS is claimed. Hidden/offscreen geometry cannot cast shadows,
+  thin occluders may be missed, and filtered edges approximate softness rather
+  than physical penumbrae. The README includes the manual validation sequence.

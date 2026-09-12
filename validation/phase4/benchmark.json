@@ -1,0 +1,42 @@
+{
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce MX550",
+  "recorded_at": "2026-09-12T22:15:37.247537+00:00",
+  "torch": "2.5.1+cu121",
+  "shadow_preset": "fast",
+  "bias": 0.01,
+  "thickness": 0.03,
+  "warmup_pairs": 15,
+  "measured_pairs": 30,
+  "method": "alternating off/on order; wall time with device synchronization; no image download",
+  "source": "synthetic geometry; excludes depth, camera, hand inference, UI and display",
+  "presets": {
+    "fast": {
+      "width": 320,
+      "height": 240,
+      "off_mean_ms": 1.5540800018546481,
+      "on_mean_ms": 9.84765666507883,
+      "added_mean_ms": 8.293576663224181,
+      "off_p95_ms": 2.2004749975167215,
+      "on_p95_ms": 16.19712499814341
+    },
+    "balanced": {
+      "width": 480,
+      "height": 360,
+      "off_mean_ms": 3.156406666676048,
+      "on_mean_ms": 12.209773333840227,
+      "added_mean_ms": 9.053366667164179,
+      "off_p95_ms": 3.572870002244599,
+      "on_p95_ms": 16.495580005721422
+    },
+    "detail": {
+      "width": 640,
+      "height": 480,
+      "off_mean_ms": 5.3606433313689195,
+      "on_mean_ms": 17.427746668302763,
+      "added_mean_ms": 12.067103336933844,
+      "off_p95_ms": 5.602234999969369,
+      "on_p95_ms": 20.817089999036398
+    }
+  }
+}

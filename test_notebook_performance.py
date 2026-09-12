@@ -24,7 +24,7 @@ def load_helpers():
               DisplayImage=lambda **kw: SimpleNamespace(**kw), JPEG_QUALITY=75)
     for c in nb['cells']:
         tags = c['metadata'].get('tags', [])
-        if set(tags) & {'geometry', 'lighting'}:
+        if set(tags) & {'geometry', 'lighting', 'shadows'}:
             exec(''.join(c['source']), ns)
         elif 'live' in tags:
             tree = ast.parse(''.join(c['source']))

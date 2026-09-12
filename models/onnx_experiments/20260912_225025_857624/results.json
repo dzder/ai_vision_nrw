@@ -1,0 +1,80 @@
+{
+  "source": "synthetic gradients (compute-only; real-scene quality still needs inspection)",
+  "gpu": "NVIDIA GeForce MX550",
+  "torch": "2.5.1+cu121",
+  "cuda": "12.1",
+  "cudnn": 90100,
+  "onnxruntime": "1.20.0",
+  "dtype": "torch.float16",
+  "input_shape": [
+    1,
+    3,
+    196,
+    266
+  ],
+  "frame_shape": [
+    240,
+    320,
+    3
+  ],
+  "fast_preprocess": true,
+  "profile_kernel_events": {
+    "CUDAExecutionProvider": 432
+  },
+  "quality": [
+    {
+      "depth_nrmse": 0.004386362619698048,
+      "normal_mean_deg": 6.893284797668457,
+      "normal_p95_deg": 18.19430923461914,
+      "relit_mae_255": 2.8673741817474365
+    },
+    {
+      "depth_nrmse": 0.0042182994075119495,
+      "normal_mean_deg": 6.839217185974121,
+      "normal_p95_deg": 18.26658821105957,
+      "relit_mae_255": 2.8074522018432617
+    },
+    {
+      "depth_nrmse": 0.005207586567848921,
+      "normal_mean_deg": 6.202930927276611,
+      "normal_p95_deg": 16.08336639404297,
+      "relit_mae_255": 3.025364637374878
+    },
+    {
+      "depth_nrmse": 0.009733380749821663,
+      "normal_mean_deg": 7.359523296356201,
+      "normal_p95_deg": 19.234416961669922,
+      "relit_mae_255": 3.4188151359558105
+    }
+  ],
+  "quality_guardrails_passed": true,
+  "geometry_backend": "gpu",
+  "depth_path": {
+    "pytorch": {
+      "mean_ms": 57.214423334031984,
+      "p50_ms": 57.02079999900889,
+      "p95_ms": 57.86606000474421,
+      "compute_fps": 17.478110268834698
+    },
+    "onnx": {
+      "mean_ms": 63.242169999769736,
+      "p50_ms": 63.11735000053886,
+      "p95_ms": 64.13806999626104,
+      "compute_fps": 15.812234146988331
+    }
+  },
+  "render_compute": {
+    "pytorch": {
+      "mean_ms": 61.8100000002111,
+      "p50_ms": 61.818300004233606,
+      "p95_ms": 62.527735001640394,
+      "compute_fps": 16.178611875045863
+    },
+    "onnx": {
+      "mean_ms": 67.94962666802651,
+      "p50_ms": 67.8962500023772,
+      "p95_ms": 68.6267749973922,
+      "compute_fps": 14.716784315616364
+    }
+  }
+}
