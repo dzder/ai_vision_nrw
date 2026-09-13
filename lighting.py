@@ -25,7 +25,7 @@ def _unit(vectors):
     return vectors / np.maximum(np.linalg.norm(vectors, axis=-1, keepdims=True), 1e-8)
 
 
-def shade(frame_bgr, points, normals, light_position, *, ambient=0.18,
+def shade(frame_bgr, points, normals, light_position, *, ambient=0.38,
           intensity=1.8, specular=0.35, shininess=48.0,
           cull_radius_frac=0.0, flat_threshold=None, flat_suppress=0.25):
     """Return uint8 BGR: linear-light Lambert + Blinn-Phong, then sRGB.

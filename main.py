@@ -28,9 +28,10 @@ def main():
     parser.add_argument("--strength", type=float, default=40.0)
     parser.add_argument("--input-size", type=int, default=518,
                         help="Model resize target, multiple of 14: try 294 for speed, 518 for detail")
-    parser.add_argument("--cull-radius-frac", type=float, default=0.35,
+    parser.add_argument("--cull-radius-frac", type=float, default=None,
                         help="Shading cull radius as fraction of image width; 0 disables. Inside the "
-                             "circle gets full direct light, outside is ambient only.")
+                             "circle gets full direct light, outside is ambient only. Default None = "
+                             "auto: 0 on CUDA (relight is launch-bound there), 0.35 on CPU.")
     parser.add_argument("--flat-threshold", type=float, default=0.95,
                         help="Raw normal Nz above this (walls/flat) scales direct light by --flat-suppress; "
                              "0 disables flat suppression.")
@@ -43,7 +44,7 @@ def main():
         parser.error("Dimensions must be >= 3; strength must be finite and nonnegative.")
     if args.input_size < 140 or args.input_size % 14:
         parser.error("--input-size must be a multiple of 14 and at least 140.")
-    if not 0.0 <= args.cull_radius_frac <= 2.0 or np.isnan(args.cull_radius_frac):
+    if args.cull_radius_frac is not None and (not 0.0 <= args.cull_radius_frac <= 2.0 or np.isnan(args.cull_radius_frac)):
         parser.error("--cull-radius-frac must be in [0, 2].")
     if not 0.0 <= args.flat_threshold < 1.0 or np.isnan(args.flat_threshold):
         parser.error("--flat-threshold must be in [0, 1).")
@@ -60,6 +61,8 @@ def main():
         from depth import DepthEstimator
         print("Loading Depth Anything V2 Small (first run downloads weights ~99 MB)...", flush=True)
         estimator = DepthEstimator(args.device, input_size=args.input_size)
+        cull_radius_frac = (args.cull_radius_frac if args.cull_radius_frac is not None
+                            else (0.0 if str(estimator.device).lower().startswith("cuda") else 0.35))
         print(f"Device: {estimator.device}. Warming up...", flush=True)
         camera = Webcam(args.camera, args.width, args.height)
         warmup = camera.read()
@@ -93,7 +96,7 @@ def main():
                 points = surface_points(depth, args.strength)
                 relit = shade(frame, points, normals, light.position,
                               intensity=light.intensity, specular=light.specular,
-                              cull_radius_frac=args.cull_radius_frac,
+                              cull_radius_frac=cull_radius_frac,
                               flat_threshold=None if args.flat_threshold <= 0 else args.flat_threshold,
                               flat_suppress=args.flat_suppress)
             shaded = perf_counter()
@@ -104,12 +107,12 @@ def main():
             if args.level == 2:
                 display[:h, 2*w:3*w] = relit
                 light.draw(display)
-                if args.cull_radius_frac > 0:
+                if cull_radius_frac > 0:
                     # Outline the ambient-only region boundary so the cull is visible.
                     cx = int(round(light.position[0]*max(h, w) + (w-1)/2))
                     cy = int(round(light.position[1]*max(h, w) + (h-1)/2))
                     cv2.circle(display[:h, 2*w:3*w], (cx, cy),
-                               int(args.cull_radius_frac*w), (100, 200, 0), 1, cv2.LINE_AA)
+                               int(cull_radius_frac*w), (100, 200, 0), 1, cv2.LINE_AA)
             panel_label = "Camera | Normals XYZ->RGB" + (" | Relit" if args.level == 2 else "")
             lines = [f"{panel_label}    FPS: {fps:.1f}    {estimator.device}    "
                      f"model HxW: {estimator.model_shape}",
@@ -118,7 +121,7 @@ def main():
                 lines += ["Move mouse over Relit: light XY | wheel/[/]: Z toward/away from scene | +/-: power | S: specular | R: reset",
                           f"Light XYZ: ({light.position[0]:+.2f}, {light.position[1]:+.2f}, {light.position[2]:+.2f}) proxy units | "
                           f"power: {light.intensity:.1f} | specular: {'on' if light.specular else 'off'}",
-                          f"Shading cull: {'on (circle; ambient outside)' if args.cull_radius_frac > 0 else 'off'} | "
+                          f"Shading cull: {'on (circle; ambient outside)' if cull_radius_frac > 0 else 'off'} | "
                           f"flat suppression: {'on (Nz>{:.2f}, x{})'.format(args.flat_threshold, args.flat_suppress) if args.flat_threshold > 0 else 'off'}"]
             if probe.point is not None:
                 normal, relative_depth = sample_normal(depth, normals, probe.point)

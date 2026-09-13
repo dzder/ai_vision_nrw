@@ -336,3 +336,32 @@ resolve before committing:
 - Remaining: live hand/camera validation of cull+flat, threaded (producer/
   consumer) pipeline so 40 ms depth streams ahead of render, and the full
   Level 3–4 port from notebook to `main.py` before submission.
+
+## Shading cull + ambient retune — September 13, 2026 (live fix)
+
+- Live run exposed a visual bug: full-frame dark flat wash + a hard square
+  around the light. Instrumented and measured, not guessed: the square is the
+  crop-and-slice boundary (61% of frame), outside-pixels are ambient-only and
+  crushed to mean ~54 vs inside ~115; frame dropped 134.8 → 91.6. Not a color
+  swap (2G/(R+B) 0.972→0.969), not a cull degenerate, not a light failure.
+- **Fix:** (1) `cull_radius_frac` defaults to 0 on CUDA (relight launch-bound
+  there, full-frame no slower, no boundary artifact); CPU keeps 0.35 where the
+  crop saves time. Notebook cell 2: `0.0 if DEVICE.type=="cuda" else 0.35`;
+  `main.py --cull-radius-frac` now auto-defaults (None→0 CUDA / 0.35 CPU) and
+  the resolved value drives shade, ring draw, and status. (2) ambient default
+  **0.18 → 0.38** in notebook cell-6 `relight_rgb` and `lighting.shade()`;
+  measured drop 42.3→7.6 on the diagnosis frame, dark-fraction 1.75%→0.00%,
+  no green cast; a harder frame with 4.3% shadows shows 52.8→24.4 (remaining
+  drop is legit Lambert). Kept 0.38 to preserve shadow contrast; single knob
+  in cell 2 / `lighting.shade`.
+- Live instrumented re-run: `in_box_frac=1.0000` every frame (no box); a hand
+  was detected and moved the light ((1.05,0.17), open-hand power ~8) — hand
+  tracking still drives shading. Before/after PNGs in `validation/debug_frame_before`
+  and `validation/debug_frame`.
+- Regression: `test_notebook_lighting_cull.py` (CUDA), `test_lighting.py` 7/7
+  (fake estimator's string `.device` handled via `str(...).lower().startswith`),
+  geometry/shadows/gestures/local/performance + Node controls all pass;
+  `test_notebook_onnx.py` still environment-blocked (onnxruntime-gpu missing),
+  unrelated. Feathering deferred (CPU-crop-only). Still pending: live
+  shadow-following with a real hand; threaded capture→depth producer; full
+  Level 3–4 port to `main.py`.

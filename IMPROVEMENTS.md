@@ -298,3 +298,53 @@ root-caused in one pass: `load_helpers()` returns `(nb, ns)`, and the new test
 unpacked `ns, _ = load_helpers()` — so `ns` was the notebook structure, not the
 helpers namespace. Not a library or numpy/torch issue; a four-line unpacking fix
 in the test. No caching/reload system was added.
+
+## Shading cull + ambient retune — September 13, 2026 (live fix)
+
+**Observed live bug:** with the CUDA path at default `cull_radius_frac=0.35`,
+the local window showed a flat, uniformly darkened frame with a hard square
+around the light — not a green color swap, not a degenerate cull box (the box
+covered 61% of the frame), and not a light-fallback bug. The visible square is
+the crop-and-slice boundary: outside it every pixel is `albedo * ambient`
+re-encoded. With `ambient=0.18`, ambient-only regions crushed to mean **~54**
+against **~115** inside the box (61-step jump) and the whole frame dropped
+**134.8 → 91.6** (mean). Root cause measured with source-injected
+instrumentation, not inspection: on a CUDA path where relight is launch-bound,
+the cull costs nothing (±0.1-0.9 ms) but the box's brightness discontinuity is
+always visible.
+
+**Fix (both notebook and desktop, wired on by default):**
+1. `cull_radius_frac` defaults to **0 on CUDA** (evidence: relight is
+   launch-bound there, full-frame is no slower and has no boundary artifact);
+   CPU keeps 0.35 where the crop actually saves time (sweep above).
+   Notebook cell 2: `CULL_SHADING_RADIUS_FRAC = 0.0 if DEVICE.type == "cuda"
+   else 0.35`. Desktop `main.py`: `--cull-radius-frac` now defaults to auto
+   (`None` → 0 on CUDA, 0.35 on CPU), resolved after the estimator is created
+   and used for the shade call, the boundary-ring draw, and the status line.
+2. `ambient` default raised **0.18 → 0.38** in notebook cell-6 `relight_rgb`
+   and `lighting.shade()`. Measured on the exact diagnosis frame
+   (`validation/debug_frame_before/frame_capture_000.png`, same no-palm
+   default light, cull=0): frame-mean drop **42.3 → 7.6** (134.8 → 127.3),
+   pixels <40 from 1.75% → 0.00%, whole-frame `2G/(R+B)` 0.972 → 0.976 (no
+   cast). On a second, harder live frame with 4.3% cast shadows: drop
+   **52.8 → 24.4**, remaining drop is legitimate Lambert shading. I stayed at
+   0.38 rather than pushing toward 0.5 to keep shadow contrast; the value is a
+   single knob in cell 2 / `lighting.shade`.
+
+**Live re-verification (`validation/debug_frame/`):** the instrumented 48-frame
+camera loop now prints `in_box_frac=1.0000` on every relight (full-frame, no
+box). During the run a hand was detected and moved the light to (1.05, 0.17)
+with open-hand power through ~8.0, confirming hand tracking still drives the
+light. Before/after PNG pairs in `validation/debug_frame_before` /
+`validation/debug_frame`.
+
+**Regression re-checks:** `test_notebook_lighting_cull.py` passes on CUDA (bit
+-exact cull/flat features incl. the full-frame/legacy path), `test_lighting.py`
+passes (7/7, fake estimator's string `.device` handled),
+`test_notebook_geometry/shadows/gestures/local/performance` and the Node
+browser-controls checks all pass. `test_notebook_onnx.py` remains
+environment-blocked (onnxruntime-gpu not installed) and is unrelated.
+Feathering (soft cull edge) was explicitly deferred — it only matters on the
+CPU crop path. Still pending: live shadow-following with an actual hand, and
+the threaded capture→depth producer so the 40 ms depth stage streams ahead of
+render.
