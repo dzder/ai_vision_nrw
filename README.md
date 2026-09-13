@@ -3,8 +3,8 @@
 ## Run the notebook (Windows PowerShell)
 
 Open **[test_l1.ipynb](test_l1.ipynb)** for Levels 1–4: geometry, relighting,
-hand control, and dynamic shadows. Use a local desktop session for the webcam
-and OpenCV window. The photo experiment works without a webcam.
+hand control, and dynamic shadows.
+Open **[test_l5.ipynb](test_l5.ipynb)** for Level 5: up to 6 tracked hands driving independent lights, overlapping shadows, and volumetric haze (God rays).
 
 ### 1. Create a notebook environment
 

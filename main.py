@@ -19,8 +19,8 @@ def put_label(image, text, position):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--level", type=int, choices=[1, 2], default=2,
-                        help="1: geometry/probe only; 2: interactive point-light relighting")
+    parser.add_argument("--level", type=int, choices=[1, 2, 5], default=2,
+                        help="1: geometry/probe only; 2: point-light relighting; 5: See test_l5.ipynb")
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
@@ -37,6 +37,11 @@ def main():
         parser.error("--input-size must be a multiple of 14 and at least 140.")
     if args.benchmark_frames < 0:
         parser.error("--benchmark-frames must be nonnegative.")
+
+    if args.level == 5:
+        print("Level 5 (Multi-light & Volumetric Scattering) is implemented in test_l5.ipynb.")
+        print("Please run the notebook to access Level 5 features.")
+        return
 
     camera = None
     title = "Level 2 - Dynamic Relighting" if args.level == 2 else "Level 1 - Geometry Engine"
