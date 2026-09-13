@@ -1,0 +1,35 @@
+{
+  "device": "NVIDIA GeForce GTX 1660 Ti",
+  "torch": "2.5.1+cu121+cu12.1",
+  "dt": "2026-09-13",
+  "note": "depth stage only (preprocess+fp16 model+upsample), sync per loop; serial-loop FPS upper bound",
+  "rows": {
+    "fast": {
+      "input_size": 196,
+      "frame": [
+        320,
+        240
+      ],
+      "ms": 40.691,
+      "depth_only_fps": 24.58
+    },
+    "balanced": {
+      "input_size": 224,
+      "frame": [
+        480,
+        360
+      ],
+      "ms": 43.622,
+      "depth_only_fps": 22.92
+    },
+    "detail": {
+      "input_size": 294,
+      "frame": [
+        640,
+        480
+      ],
+      "ms": 75.957,
+      "depth_only_fps": 13.17
+    }
+  }
+}

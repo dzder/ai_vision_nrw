@@ -1,0 +1,104 @@
+{
+  "device": "cpu",
+  "torch": "2.5.1+cu121+cu12.1",
+  "dt": "2026-09-13",
+  "note": "synthetic compute only, not live-camera FPS; GPU/CPU stages overlap in the live loop",
+  "rows": {
+    "fast/center": {
+      "frame": [
+        320,
+        240
+      ],
+      "light": "center",
+      "off_mean_ms": 19.705,
+      "off_p95_ms": 23.583,
+      "cull_only_mean_ms": 15.011,
+      "cull_only_p95_ms": 17.969,
+      "cull_plus_flat_mean_ms": 16.832,
+      "cull_plus_flat_p95_ms": 20.47,
+      "cull_only_vs_off_ms": -4.694,
+      "cull_plus_flat_vs_off_ms": -2.873
+    },
+    "fast/edge": {
+      "frame": [
+        320,
+        240
+      ],
+      "light": "edge",
+      "off_mean_ms": 20.088,
+      "off_p95_ms": 23.49,
+      "cull_only_mean_ms": 13.671,
+      "cull_only_p95_ms": 19.475,
+      "cull_plus_flat_mean_ms": 11.43,
+      "cull_plus_flat_p95_ms": 13.384,
+      "cull_only_vs_off_ms": -6.417,
+      "cull_plus_flat_vs_off_ms": -8.658
+    },
+    "balanced/center": {
+      "frame": [
+        480,
+        360
+      ],
+      "light": "center",
+      "off_mean_ms": 43.337,
+      "off_p95_ms": 48.994,
+      "cull_only_mean_ms": 32.33,
+      "cull_only_p95_ms": 37.153,
+      "cull_plus_flat_mean_ms": 33.182,
+      "cull_plus_flat_p95_ms": 36.253,
+      "cull_only_vs_off_ms": -11.007,
+      "cull_plus_flat_vs_off_ms": -10.155
+    },
+    "balanced/edge": {
+      "frame": [
+        480,
+        360
+      ],
+      "light": "edge",
+      "off_mean_ms": 47.963,
+      "off_p95_ms": 96.251,
+      "cull_only_mean_ms": 19.575,
+      "cull_only_p95_ms": 21.865,
+      "cull_plus_flat_mean_ms": 18.65,
+      "cull_plus_flat_p95_ms": 22.338,
+      "cull_only_vs_off_ms": -28.388,
+      "cull_plus_flat_vs_off_ms": -29.313
+    },
+    "detail/center": {
+      "frame": [
+        640,
+        480
+      ],
+      "light": "center",
+      "off_mean_ms": 74.359,
+      "off_p95_ms": 82.667,
+      "cull_only_mean_ms": 55.658,
+      "cull_only_p95_ms": 75.531,
+      "cull_plus_flat_mean_ms": 56.511,
+      "cull_plus_flat_p95_ms": 63.786,
+      "cull_only_vs_off_ms": -18.701,
+      "cull_plus_flat_vs_off_ms": -17.848
+    },
+    "detail/edge": {
+      "frame": [
+        640,
+        480
+      ],
+      "light": "edge",
+      "off_mean_ms": 80.728,
+      "off_p95_ms": 119.388,
+      "cull_only_mean_ms": 28.981,
+      "cull_only_p95_ms": 32.056,
+      "cull_plus_flat_mean_ms": 32.917,
+      "cull_plus_flat_p95_ms": 37.213,
+      "cull_only_vs_off_ms": -51.747,
+      "cull_plus_flat_vs_off_ms": -47.811
+    }
+  },
+  "radius_sweep_balanced_center": {
+    "0.0": 43.706,
+    "0.35": 32.409,
+    "0.15": 16.128
+  },
+  "radius_sweep_note": "on CPU the ms scale with the box area (proves the box slices arrays before compute, i.e. crop-and-slice, not mask-after); on GPU the shading is launch-bound at these widths, so the box is roughly neutral and the timing check is only evidence on CPU"
+}

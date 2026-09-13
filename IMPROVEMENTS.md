@@ -246,3 +246,55 @@ Processing: <measured ms>       Mode: <hand/manual>
 - [ ] Update [context.md](context.md) with measured outcomes and unresolved issues.
 - [ ] Track the later notebook-to-`python main.py` submission integration
   separately; the active improvement work remains in the notebook.
+
+## Completed: hand-centered shading cull + flat-surface suppression — September 13, 2026
+
+Notebook `test_l1.ipynb` cell-6 `relight_rgb` and desktop `lighting.shade()` now
+share the same two shading fixes; both are wired on by default.
+
+**Hand-centered shading cull** (`cull_radius_frac`, default 0.35).
+`_light_screen_pixels` inverts the hand mapping (x = 6*(u-0.5), y = 4*(v-0.5))
+to center a circle on the light's screen position. Per-pixel diffuse/specular
+math runs only inside the bounding box: points, normals, validity and albedo are
+**sliced before compute** (crop-and-slice, not a post-hoc mask) and the result is
+pasted onto a full-frame ambient base. Outside the box every pixel is
+`decode(albedo) * ambient` re-encoded — never the raw camera pixels. The
+crop-and-slice claim is verified by a radius-sweep timing check in
+`test_notebook_lighting_cull.benchmark`, not just by visual diff: on CPU the
+measured relight time scales with the box area (radius 0.0 → 0.35 → 0.15 gives
+46.81 → 34.85 → 18.55 ms at 480x360 torch-CPU; the numpy `shade` path is
+33.32 → 24.59 → 13.33 ms). A mask-after implementation would keep timing flat.
+
+**Flat-surface suppression** (`flat_threshold` default 0.95, `flat_suppress`
+default 0.25). Raw normals with Nz above the threshold (background walls) keep
+ambient but scale direct diffuse/specular by `flat_suppress`. The bump-slope
+pixels (hand-sized) are byte-for-byte identical to the baseline; ambient
+(power=0) renders are unchanged.
+
+Honest per-frame numbers on the GTX 1660 Ti (synthetic, not live FPS):
+depth inference alone is **40.69 ms @196, 43.62 ms @224, 75.96 ms @294**
+(`validation/depth_only_benchmark.json`) → a serial loop cannot exceed
+**~24.6 / 22.9 / 13.2 FPS** before geometry, hand, shadading, shadows, download
+or display. On this GPU the shaded stage is launch-bound: cull is neutral
+(±0.1-0.9 ms) at 320-640 px widths because the per-pixel GPU math it removes is
+already cheap (`validation/lighting_cull/benchmark.json`). The cull saves real
+time on the CPU/numpy desktop path (see sweep above) and wherever per-pixel
+costs dominate (weak GPUs, larger frames, threaded pipeline). Depth, not
+shading, is the current bottleneck: further lighting micro-tuning yields
+single-digit percent frame-time gains until the depth stage streams ahead of the
+render stages.
+
+**Notebook-to-`main.py` integration (submission path).** Ported the same
+`cull_radius_frac` / `flat_threshold` / `flat_suppress` semantics into
+`lighting.shade()` (numpy, orthographic view, same scale mapping as
+`LightController`). `python main.py` accepts `--cull-radius-frac`,
+`--flat-threshold`, `--flat-suppress`, draws the ambient-only boundary circle on
+the relit panel, and reports cull/flat state in the status lines. `main.py`
+remains Level 2 (no hand tracking/shadows); Levels 3-4 stay in the notebook for
+now.
+
+**Process note.** A transient `KeyError: relight_rgb` in the new test was
+root-caused in one pass: `load_helpers()` returns `(nb, ns)`, and the new test
+unpacked `ns, _ = load_helpers()` — so `ns` was the notebook structure, not the
+helpers namespace. Not a library or numpy/torch issue; a four-line unpacking fix
+in the test. No caching/reload system was added.

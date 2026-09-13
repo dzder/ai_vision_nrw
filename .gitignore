@@ -1,1 +1,5 @@
 /__pycache__
+/.venv/
+nb_live.err
+nb_live.log
+nb_live.pid

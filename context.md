@@ -292,3 +292,47 @@ resolve before committing:
   No live FPS is claimed. Hidden/offscreen geometry cannot cast shadows,
   thin occluders may be missed, and filtered edges approximate softness rather
   than physical penumbrae. The README includes the manual validation sequence.
+
+## Shading cull + flat suppression, depth ceiling, Desktop port — September 13, 2026
+
+- **Depth-only CUDA ceiling on the GTX 1660 Ti** (fp16, cached model):
+  preprocess+model+upsample stage **40.69 ms @196 / 43.62 ms @224 / 75.96 ms
+  @294** → **24.6 / 22.9 / 13.2 depth-FPS max** for a serial loop; saved to
+  `validation/depth_only_benchmark.json`. Depth, not shading, is the bottleneck.
+  This sandbox GPU (1660 Ti) is faster than the earlier MX550 reports, so the
+  two machines are different performance classes.
+- **Hand-centered shading cull** in notebook cell 6 `relight_rgb`
+  (`cull_radius_frac`, default 0.35). `_light_screen_pixels` inverts the gesture
+  mapping (x=6(u-0.5), y=4(v-0.5)) to center a circle on the light's screen
+  pixel. Per-pixel diffuse/specular math runs only inside the box; points,
+  normals, validity and albedo are **sliced before compute** (crop-and-slice)
+  and pasted on a full-frame `albedo*ambient` base. Outside the circle every
+  pixel is ambient re-encoded, never raw pixels. `cull_radius_frac` in [0,2].
+- **Flat-surface suppression** (`FLAT_THRESHOLD` 0.95, `FLAT_SUPPRESS` 0.25):
+  raw normals with Nz>threshold (walls) keep ambient but scale direct
+  diffuse/specular by 0.25. Bump-slope pixels (hand-sized) are byte-identical
+  to baseline; power=0 renders unchanged. All legacy-path output is
+  byte-identical.
+- **Timing evidence, not just visual:** radius sweep 0.0→0.35→0.15 on torch-CPU
+  at 480x360: 46.81 → 34.85 → 18.55 ms (numpy `shade`: 33.32 → 24.59 →
+  13.33 ms) — monotonic with box area, proving crop-and-slice. On the GTX 1660
+  Ti the relight stage is launch-bound at 320–640 px; cull is neutral (±0.1–0.9
+  ms), flat adds ~0.6–1.3 ms. Numbers in `validation/lighting_cull/benchmark.json`.
+- **Port to the submission path:** the same semantics now live in
+  `lighting.shade()` (numpy, orthographic view, light-pixel mapping matching
+  `LightController`). `main.py` accepts `--cull-radius-frac` (default 0.35),
+  `--flat-threshold` (0.95), `--flat-suppress` (0.25), draws the ambient-only
+  boundary circle on the relit panel and reports cull/flat state. `main.py`
+  still launches Level 2 only; Levels 3–4 remain in the notebook.
+- **New tests:** `test_notebook_lighting_cull.py` (features incl. bit-exact
+  inside/outside cull checks, slope preservation, param validation; per-region
+  benchmark; preview PNG). Full existing suite passes on CPU and CUDA —
+  geometry, lighting, shadows, gestures, local loop, performance, browser
+  controls; `test_lighting.py` adjusted so its bottom-row assertion avoids the
+  new cull ring.
+- A transient `KeyError: relight_rgb` was a test-file unpacking bug
+  (`ns, _ = load_helpers()` swapped the function's `(nb, ns)` return), not a
+  library issue; fixed in the test, no library change was needed.
+- Remaining: live hand/camera validation of cull+flat, threaded (producer/
+  consumer) pipeline so 40 ms depth streams ahead of render, and the full
+  Level 3–4 port from notebook to `main.py` before submission.

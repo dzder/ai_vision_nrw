@@ -26,12 +26,22 @@ def _unit(vectors):
 
 
 def shade(frame_bgr, points, normals, light_position, *, ambient=0.18,
-          intensity=1.8, specular=0.35, shininess=48.0):
+          intensity=1.8, specular=0.35, shininess=48.0,
+          cull_radius_frac=0.0, flat_threshold=None, flat_suppress=0.25):
     """Return uint8 BGR: linear-light Lambert + Blinn-Phong, then sRGB.
 
 Input normals are Level 1's +Z-oriented normals. Negating them yields the
 camera-facing surface. Camera RGB approximates albedo and retains real lighting.
 Softened inverse-square falloff avoids a singularity at the light position.
+
+cull_radius_frac > 0 runs the per-pixel direct math only inside a circle of
+that radius (fraction of image width) around the light's screen position;
+outside it, every pixel is albedo * ambient re-encoded -- never the raw camera
+pixels and never the full-frame direct math. Points/normals/albedo are sliced
+to the box BEFORE the vector math (crop-and-slice, not a post-hoc mask).
+flat_threshold > 0 keeps ambient but scales direct diffuse/specular by
+flat_suppress on near-camera-facing surfaces (walls), reducing bright patches
+on flat regions.
 """
     frame_bgr = np.asarray(frame_bgr)
     points = np.asarray(points, dtype=np.float32)
@@ -46,8 +56,33 @@ Softened inverse-square falloff avoids a singularity at the light position.
             or not np.isfinite(parameters).all() or (parameters < 0).any()
             or shininess < 1):
         raise ValueError("Geometry/light must be finite; gains >= 0 and shininess >= 1.")
-    n = -_unit(normals)
-    to_light = light - points
+    if not np.isfinite(cull_radius_frac) or not 0.0 <= cull_radius_frac <= 2.0:
+        raise ValueError("cull_radius_frac must be finite and in [0, 2].")
+    if flat_threshold is not None and not 0.0 < flat_threshold < 1.0:
+        raise ValueError("flat_threshold must be None or in (0, 1).")
+    if not np.isfinite(flat_suppress) or not 0.0 < flat_suppress <= 1.0:
+        raise ValueError("flat_suppress must be finite and in (0, 1].")
+    h, w = frame_bgr.shape[:2]
+    # Hand-centered shading cull: light X/Y maps to the same screen pixel the
+    # controller draws (surface_points scale). Direct math runs only inside the
+    # bounding box; the full frame still gets the cheap decode -> ambient -> encode.
+    box = None
+    if cull_radius_frac > 0:
+        scale = float(max(h, w))
+        cx = int(np.clip(round(light[0] * scale + (w - 1) / 2.0), 0, w - 1))
+        cy = int(np.clip(round(light[1] * scale + (h - 1) / 2.0), 0, h - 1))
+        radius = float(cull_radius_frac) * w
+        x0, x1 = int(max(0, cx - radius)), int(min(w, cx + radius + 1))
+        y0, y1 = int(max(0, cy - radius)), int(min(h, cy + radius + 1))
+        if not (x0 <= 0 and x1 >= w and y0 <= 0 and y1 >= h):
+            box = (slice(y0, y1), slice(x0, x1))
+    sl = box if box is not None else (slice(None), slice(None))
+    srgb = frame_bgr.astype(np.float32) / 255.0
+    albedo = np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
+    linear = albedo * ambient
+    p = points[sl]
+    n = -_unit(normals[sl])
+    to_light = light - p
     distance_squared = np.sum(to_light * to_light, axis=-1)
     l = _unit(to_light)
     # Orthographic geometry uses parallel rays toward the viewer (-Z).
@@ -56,11 +91,15 @@ Softened inverse-square falloff avoids a singularity at the light position.
     diffuse = np.maximum(np.sum(n * l, axis=-1), 0)
     highlight = np.maximum(np.sum(n * half_vector, axis=-1), 0) ** shininess
     highlight *= (diffuse > 0) & (n[..., 2] < 0)
+    # Flat-surface suppression: walls keep ambient but lose most of the direct.
+    if flat_threshold is not None:
+        flat = normals[sl][..., 2] > flat_threshold
+        suppress = np.where(flat, float(flat_suppress), 1.0)
+        diffuse = diffuse * suppress
+        highlight = highlight * suppress
     attenuation = intensity / (1.0 + distance_squared)
-    srgb = frame_bgr.astype(np.float32) / 255.0
-    albedo = np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
-    linear = albedo * (ambient + attenuation * diffuse)[..., None]
-    linear += (attenuation * specular * highlight)[..., None]
+    linear[sl] = linear[sl] + albedo[sl] * (attenuation * diffuse)[..., None]
+    linear[sl] = linear[sl] + (attenuation * specular * highlight)[..., None]
     linear = np.clip(linear, 0, 1)
     output = np.where(linear <= 0.0031308, 12.92 * linear,
                       1.055 * linear ** (1 / 2.4) - 0.055)

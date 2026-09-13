@@ -156,8 +156,10 @@ class LightingTests(unittest.TestCase):
             for index, (display, relit) in enumerate(zip(shown, renders), 2):
                 h, w = relit.shape[:2]
                 np.testing.assert_equal(display[0, :w], 60+index)
-                # Bottom row avoids the interactive light marker.
-                np.testing.assert_equal(display[h-1, 2*w:3*w], relit[h-1])
+                # Bottom row avoids the interactive light marker and the cull
+                # ring (both centered on the light's screen column); compare the
+                # unaffected right-hand segment.
+                np.testing.assert_equal(display[h-1, 2*w+w//2:3*w], relit[h-1, w//2:])
 
 
 if __name__ == "__main__":
