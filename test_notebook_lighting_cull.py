@@ -73,19 +73,18 @@ def check_features(device):
     full = relight_rgb(frame, normals, points, valid, light, cull_radius_frac=2.0)
     np.testing.assert_array_equal(full, base)
 
-    # 3. Cull box: inside the circle identical to the full render; outside the
-    #    circle identical to the ambient (power=0) render -- never raw pixels.
+    # 3. Inner disk preserves shading, the rim fades, and box corners are ambient.
     culled = relight_rgb(frame, normals, points, valid, light, cull_radius_frac=0.35)
     ambient = relight_rgb(frame, normals, points, valid, dict(light, power=0.0))
     cx, cy = ns["_light_screen_pixels"](light, h, w)
     r = int(0.35 * w)
     x0, x1 = max(0, cx - r), min(w, cx + r + 1)
     y0, y1 = max(0, cy - r), min(h, cy + r + 1)
-    inside = (slice(y0, y1), slice(x0, x1))
-    outside = np.ones((h, w), bool)
-    outside[y0:y1, x0:x1] = False
-    inside_mask = ~outside
-    np.testing.assert_array_equal(culled[inside], base[inside])
+    yy, xx = np.mgrid[:h, :w]
+    radius = np.hypot(xx-cx, yy-cy)
+    inside_mask = radius <= .65*r
+    outside = radius >= r
+    np.testing.assert_array_equal(culled[inside_mask], base[inside_mask])
     np.testing.assert_array_equal(culled[outside], ambient[outside])
 
     # 4. Hotspot is preserved at the light-screen center.
@@ -99,7 +98,7 @@ def check_features(device):
     slope = (np.asarray(normals.cpu().numpy())[..., 2] < 0.95)
     slope &= (np.asarray(normals.cpu().numpy())[..., 2] > 0.5)
     assert slope.any()
-    np.testing.assert_array_equal(flat_on[slope], base[slope])
+    np.testing.assert_array_equal(flat_on[slope], culled[slope])
     wall_inside = (znp > 2.95) & inside_mask
     assert wall_inside.any()
     assert int(float(flat_on[wall_inside].mean())) < int(float(base[wall_inside].mean())) - 5

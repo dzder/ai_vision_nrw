@@ -287,7 +287,7 @@ def main():
         tracker = ns['LocalHandTracker'](Path('models/hand_landmarker.task'))
         try:
             for t in (1., 1., 1.01):
-                assert tracker.detect(np.zeros((240, 320, 3), np.uint8), t) is None
+                assert tracker.detect(np.zeros((240, 320, 3), np.uint8), t) == []
             assert tracker.last_timestamp == 1010
         finally:
             tracker.close()

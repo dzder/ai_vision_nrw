@@ -1,5 +1,32 @@
 # NRW 8th Edition — AI & Vision Challenge — Project Context
 
+## Multi-hand light update — September 13, 2026
+
+- Follow-up: fixed rectangular light footprints. The cropped shading region
+  now applies a circular mask with a smooth outer 35% fade to ambient. Tracked
+  palms supply measured screen centers so the footprint follows the hand
+  independently of smoothed XYZ. CPU/CUDA checks cover dark box corners,
+  preserved inner shading, faded rims, shifted centers and multiple lights;
+  gesture and simulated local-loop regressions also passed. Live appearance
+  still needs the user's camera run.
+- Standard local `test_l1.ipynb` now requests `MAX_HANDS=4` from MediaPipe,
+  configurable in setup. Each palm owns XYZ smoothing, Z calibration, openness
+  power, and a shadow map. Rendering sums direct terms in linear RGB and adds
+  ambient once, preserving per-light culling and flat suppression.
+- Proximity association handles detection reordering. Missing hands retain
+  position briefly, fade over 0.2–0.6 seconds, then expire. New hands acquire
+  for three frames before lighting; no tracked hands means ambient only.
+  Overlapping/crossing hands can exchange identities; no identity guarantee.
+- C recalibrates all hands; R resets; G enables manual fallback. Sliders show
+  the oldest light and Specular affects every light. All detected landmarks
+  appear only on the display copy; V shows mean visibility across lights.
+- Synthetic four-hand association/intensity/fade and CPU/CUDA multi-light
+  accumulation/per-light visibility checks passed. Existing gesture, local
+  loop (now two lights), shadow/photo, and cull regression checks passed.
+  Actual multi-hand camera behavior and completed-loop FPS remain unverified.
+- Scope is the standard local notebook. Desktop `main.py`, Colab and optional
+  ONNX experiment retain their existing behavior. No volumetric haze added.
+
 Organized by IEEE INSAT Student Branch and IEEE RAS INSAT Chapter under
 National Robotics Week's 8th edition.
 

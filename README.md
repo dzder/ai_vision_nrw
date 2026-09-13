@@ -360,6 +360,24 @@ Official references:
 - [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2)
 - [Hugging Face Depth Anything](https://huggingface.co/docs/transformers/model_doc/depth_anything)
 
+## Multiple hand lights in the local notebook
+
+In `test_l1.ipynb`, run the setup cells and local live cell. `MAX_HANDS = 4`
+sets the detection limit; increase it for more hands or lower it to reduce cost.
+Each palm controls a separate light's XYZ and brightness (open = brighter,
+closed = dimmer), with independent calibration and shadows. Ambient is added once.
+New palms acquire over three frames. Missing hands hold briefly, then fade out
+within 0.6 seconds; with no hands the scene receives ambient only.
+
+G toggles manual control, C recalibrates all palms, R resets, and Q stops.
+Sliders display the oldest tracked light; Specular applies to all lights.
+V displays average visibility across the lights. Proximity matching can swap
+identities when hands overlap or cross. Additional hands cost tracking and
+shadow time; live multi-hand FPS remains unmeasured. This feature is in the
+standard local notebook loop; the optional Colab/ONNX paths remain single-light.
+
+Run `python test_notebook_multihand.py` for synthetic four-hand and multi-light checks.
+
 ## Validation
 
 Run synthetic geometry, point-tracking, and simulated display-loop checks:

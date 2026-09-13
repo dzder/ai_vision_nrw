@@ -166,6 +166,7 @@ def check_shadow_loop():
     frames = [np.full((*shape, 3), 30+i, np.uint8)
               for i, shape in enumerate(((24, 32), (24, 32), (30, 40), (30, 40)))]
     lights = [dict(ns['default_light'](), x=-.6+i*.1, power=4. if i < 3 else 0.) for i in range(4)]
+    frame_lights = [[light, dict(light, x=-light['x'])] for light in lights]
     rendered, traced, geometry = [], [], []
     real_render, real_geometry = ns['relight_rgb'], ns['compute_live_geometry']
     def compute_geometry(raw, mapper, estimator):
@@ -175,14 +176,14 @@ def check_shadow_loop():
     def shadow(depth, normals, valid, light, intrinsics, **kw):
         marker, result, expected_intrinsics = geometry[-1]
         assert depth is result[0] and normals is result[1] and valid is result[3]
-        assert intrinsics == expected_intrinsics and light == lights[marker-30]
+        assert intrinsics == expected_intrinsics and light in frame_lights[marker-30]
         traced.append(marker)
         return torch.full_like(depth, (marker-29)*.25)
     def render(frame, n, p, valid, light, **kw):
         assert frame[0, 0, 0] == geometry[-1][0]
-        assert light == lights[int(frame[0, 0, 0])-30]
+        assert light == frame_lights[int(frame[0, 0, 0])-30]
         result = real_render(frame, n, p, valid, light, **kw)
-        rendered.append((result.cpu().numpy(), kw['visibility'].cpu().numpy()))
+        rendered.append((result.cpu().numpy(), kw['visibility'][0].cpu().numpy()))
         return result
     ns.update(cv2=proxy, LIVE_BACKEND='local', DEVICE='cpu', ASSUMED_HFOV_DEG=60,
         PROFILE_STAGES=True, STATUS_INTERVAL=0, SHOW_HAND_LANDMARKS=False,
@@ -195,13 +196,13 @@ def check_shadow_loop():
     for enabled, diagnostics, visibility_view in ((True, False, False), (True, True, False),
                                                   (True, True, True), (False, False, False),
                                                   (False, False, True)):
-        packets = iter([(f, light, dict(mode='gesture', status='Tracking', age_ms=0))
-                        for f, light in zip(frames, lights)] + [None])
+        packets = iter([(f, light, dict(mode='gesture', status='Tracking', age_ms=0, lights=group))
+                        for f, light, group in zip(frames, lights, frame_lights)] + [None])
         ns.update(SHADOWS_ENABLED=enabled, SHOW_DIAGNOSTICS=diagnostics,
                   SHOW_SHADOW_VISIBILITY=visibility_view, get_frame=lambda: next(packets))
         traced.clear()
         ns['run_live']()
-        assert traced == ([30, 31, 32] if enabled else [])  # Zero power skips tracing.
+        assert traced == ([30, 30, 31, 31, 32, 32] if enabled else [])  # Each powered light traces.
         for f, actual, (relit, visibility) in zip(frames, shown[-4:], rendered[-4:]):
             h, w = f.shape[:2]
             if visibility_view:

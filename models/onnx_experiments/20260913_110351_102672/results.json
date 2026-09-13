@@ -1,0 +1,51 @@
+{
+  "source": "synthetic gradients (compute-only; real-scene quality still needs inspection)",
+  "gpu": "NVIDIA GeForce MX550",
+  "torch": "2.5.1+cu121",
+  "cuda": "12.1",
+  "cudnn": 90100,
+  "onnxruntime": "1.20.0",
+  "dtype": "torch.float16",
+  "input_shape": [
+    1,
+    3,
+    196,
+    266
+  ],
+  "frame_shape": [
+    240,
+    320,
+    3
+  ],
+  "fast_preprocess": true,
+  "profile_kernel_events": {
+    "CUDAExecutionProvider": 432
+  },
+  "quality": [
+    {
+      "depth_nrmse": 1.8487555980682373,
+      "normal_mean_deg": 44.03691482543945,
+      "normal_p95_deg": 93.85650634765625,
+      "relit_mae_255": 29.758710861206055
+    },
+    {
+      "depth_nrmse": 3.4829721450805664,
+      "normal_mean_deg": 68.01921844482422,
+      "normal_p95_deg": 118.85277557373047,
+      "relit_mae_255": 42.043704986572266
+    },
+    {
+      "depth_nrmse": 4.459525108337402,
+      "normal_mean_deg": 77.69845581054688,
+      "normal_p95_deg": 137.69073486328125,
+      "relit_mae_255": 36.399471282958984
+    },
+    {
+      "depth_nrmse": 1.7692662477493286,
+      "normal_mean_deg": 50.36574935913086,
+      "normal_p95_deg": 98.9192886352539,
+      "relit_mae_255": 19.766775131225586
+    }
+  ],
+  "quality_guardrails_passed": false
+}
